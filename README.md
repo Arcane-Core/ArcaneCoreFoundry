@@ -1,6 +1,6 @@
 # ArcaneCoreFoundry
 
-A FoundryVTT module (v13–v14) that shows the NPC currently speaking in Arcane Core as a square portrait in a corner of the game board. It embeds Arcane Core's "Portrait Only" graphic, so it follows the live NPC automatically.
+A FoundryVTT module (v13–v14) that shows the NPC currently speaking in Arcane Core as a square portrait on the game board. By default it sits in one of Foundry's interface columns, and each player can drag it anywhere or resize it. It embeds Arcane Core's "Portrait Only" graphic, so it follows the live NPC automatically.
 
 ## Install
 

@@ -1,13 +1,24 @@
 {
   "id": "arcane-core",
   "title": "Arcane Core",
-  "description": "Shows the NPC currently speaking in Arcane Core as a portrait in a corner of the game board.",
+  "description": "Shows the NPC currently speaking in Arcane Core as a portrait on the game board, which each player can move and resize.",
   "version": "0.1.0",
+  "url": "https://github.com/Arcane-Core/ArcaneCoreFoundry",
+  "manifest": "https://github.com/Arcane-Core/ArcaneCoreFoundry/releases/latest/download/module.json",
+  "download": "https://github.com/Arcane-Core/ArcaneCoreFoundry/releases/latest/download/module.zip",
+  "license": "https://github.com/Arcane-Core/ArcaneCoreFoundry/blob/main/LICENSE",
+  "readme": "https://github.com/Arcane-Core/ArcaneCoreFoundry/blob/main/README.md",
+  "bugs": "https://github.com/Arcane-Core/ArcaneCoreFoundry/issues",
+  "changelog": "https://github.com/Arcane-Core/ArcaneCoreFoundry/blob/main/changelog.md",
   "compatibility": {
     "minimum": "13",
     "verified": "14"
   },
-  "authors": [{ "name": "Lucas Teng" }],
+  "authors": [
+    {
+      "name": "Lucas Teng"
+    }
+  ],
   "esmodules": ["scripts/arcane-core.js"],
   "styles": ["styles/arcane-core.css"]
 }
