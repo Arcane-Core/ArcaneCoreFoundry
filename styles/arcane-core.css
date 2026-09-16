@@ -1,14 +1,118 @@
+/* Sits in one of Foundry's #interface slots, or free on the screen; see POSITIONS in scripts/arcane-core.js. */
 #arcane-core-portrait {
+  flex: none;
+  position: relative;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+#arcane-core-portrait:active {
+  cursor: grabbing;
+}
+#arcane-core-portrait.free {
   position: fixed;
-  z-index: 10;
+  z-index: var(--z-index-app);
+}
+#ui-right-column-1 > #arcane-core-portrait {
+  align-self: flex-end;
+}
+#ui-left-column-1 > #arcane-core-portrait {
+  margin-top: auto;
+}
+#ui-left-column-2 > #arcane-core-portrait {
+  margin-bottom: 8px;
+}
+
+#arcane-core-portrait > iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
   border: 0;
   background: transparent;
   pointer-events: none;
 }
-#arcane-core-portrait.top-left { top: 16px; left: 16px; }
-#arcane-core-portrait.top-right { top: 16px; right: 16px; }
-#arcane-core-portrait.bottom-left { bottom: 16px; left: 16px; }
-#arcane-core-portrait.bottom-right { bottom: 16px; right: 16px; }
+.arcane-core-resize {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 0 solid rgba(255, 255, 255, 0.85);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+[data-handle="bottom-right"] > .arcane-core-resize {
+  right: 0;
+  bottom: 0;
+  border-width: 0 3px 3px 0;
+  border-bottom-right-radius: 8px;
+  cursor: nwse-resize;
+}
+[data-handle="bottom-left"] > .arcane-core-resize {
+  left: 0;
+  bottom: 0;
+  border-width: 0 0 3px 3px;
+  border-bottom-left-radius: 8px;
+  cursor: nesw-resize;
+}
+[data-handle="top-right"] > .arcane-core-resize {
+  right: 0;
+  top: 0;
+  border-width: 3px 3px 0 0;
+  border-top-right-radius: 8px;
+  cursor: nesw-resize;
+}
+#arcane-core-portrait:hover .arcane-core-resize {
+  opacity: 1;
+}
 
-.arcane-core-status[data-state="ok"] { color: var(--color-level-success, #3a3); }
-.arcane-core-status[data-state="error"] { color: var(--color-level-error, #c33); }
+.arcane-core-toolbar {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+#arcane-core-portrait:hover .arcane-core-toolbar,
+.arcane-core-toolbar:focus-within {
+  opacity: 1;
+}
+.arcane-core-toolbar > button {
+  width: 24px;
+  height: 24px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  line-height: 24px;
+  cursor: pointer;
+}
+.arcane-core-toolbar > button:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.arcane-core-zone {
+  position: fixed;
+  z-index: var(--z-index-app);
+  border: 2px dashed rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  pointer-events: none;
+}
+.arcane-core-zone.active {
+  border-style: solid;
+  border-color: var(--color-border-highlight, #ff6400);
+  background: rgba(255, 100, 0, 0.15);
+}
+
+.arcane-core-status[data-state="ok"] {
+  color: var(--color-level-success, #3a3);
+}
+.arcane-core-status[data-state="error"] {
+  color: var(--color-level-error, #c33);
+}

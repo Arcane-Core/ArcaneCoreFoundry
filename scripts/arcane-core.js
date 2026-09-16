@@ -1,11 +1,15 @@
-const MODULE = "arcane-core";
-const FRAME_ID = "arcane-core-portrait";
-// Same link format the dashboard's Graphics Management copy button hands out.
-const GRAPHICS_LINK = /\/graphics\/([0-9a-f-]{36})\/([^/\s?#]+)/i;
-const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
-
-const get = (key) => game.settings.get(MODULE, key);
-const trimUrl = (url) => url.trim().replace(/\/+$/, "");
+import {
+  FRAME_ID,
+  GRAPHICS_LINK,
+  MAX_SIZE,
+  MIN_SIZE,
+  MODULE,
+  POSITIONS,
+  SNAP_DISTANCE,
+  ZERO_UUID,
+} from "./constants.js";
+import { get, move, trimUrl, uiScale } from "./helpers.js";
+import { registerSettings } from "./settings.js";
 
 /** Uses /api/npc/getNpc: its middleware checks the campaign id and key before the NPC lookup. */
 async function validate(baseUrl, campaignId, apiKey) {
@@ -25,20 +29,149 @@ async function validate(baseUrl, campaignId, apiKey) {
 
 function render() {
   document.getElementById(FRAME_ID)?.remove();
+  if (!get("showPortrait") || new Set(get("hiddenFor")).has(game.user.id)) return;
   const campaignId = get("campaignId").trim();
   const apiKey = get("apiKey").trim();
   if (!campaignId || !apiKey) return;
 
   const frame = document.createElement("iframe");
-  frame.id = FRAME_ID;
-  frame.className = get("corner");
   frame.src = `${trimUrl(get("baseUrl"))}/graphics/${encodeURIComponent(campaignId)}/${encodeURIComponent(apiKey)}/portrait`;
-  frame.style.width = frame.style.height = `${get("size")}px`;
   frame.setAttribute("allowtransparency", "true");
-  document.body.append(frame);
+  const handle = document.createElement("div");
+  handle.className = "arcane-core-resize";
+
+  const el = document.createElement("div");
+  el.id = FRAME_ID;
+  const button = (icon, label, onClick) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = `<i class="fa-solid ${icon}" inert></i>`;
+    b.ariaLabel = b.dataset.tooltip = label;
+    b.addEventListener("click", onClick);
+    return b;
+  };
+  const toolbar = document.createElement("div");
+  toolbar.className = "arcane-core-toolbar";
+  toolbar.append(
+    button("fa-arrow-rotate-left", "Reset position and size", () =>
+      game.settings.set(MODULE, "layout", {}).then(render),
+    ),
+    button("fa-xmark", "Hide portrait", async () => {
+      await game.settings.set(MODULE, "showPortrait", false);
+      ui.notifications.info(
+        "Arcane Core portrait hidden. Turn Show Portrait back on in Configure Settings → Arcane Core.",
+      );
+    }),
+  );
+
+  el.append(frame, handle, toolbar);
+  const layout = { slot: get("position"), size: get("size"), ...get("layout") };
+  el.style.width = el.style.height = `${layout.size}px`;
+  place(el, layout);
+  el.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || event.target.closest("button")) return;
+    event.preventDefault();
+    (event.target === handle ? resize : drag)(event, el, layout);
+  });
 }
 
-// Saving the settings form fires onChange once per changed setting; collapse that into one refresh.
+function place(el, layout) {
+  const position = POSITIONS[layout.slot];
+  const slot = position && document.getElementById(position.slot);
+  if (position && !slot) console.warn(`Arcane Core: #${position.slot} not found, placing the portrait freely`);
+  if (slot) {
+    el.style.left = el.style.top = "";
+    move(slot, el, position.before(slot));
+  } else {
+    const size = el.offsetWidth || layout.size;
+    el.style.left = `${Math.clamp(layout.left ?? 16, 0, Math.max(0, window.innerWidth - size))}px`;
+    el.style.top = `${Math.clamp(layout.top ?? 16, 0, Math.max(0, window.innerHeight - size))}px`;
+    move(document.getElementById("interface") ?? document.body, el, null);
+  }
+  el.dataset.handle = slot ? position.handle : "bottom-right";
+  el.classList.toggle("free", !slot);
+}
+
+function drag(event, el, layout) {
+  const start = el.getBoundingClientRect();
+  const offset = { x: event.clientX - start.left, y: event.clientY - start.top };
+  place(el, { ...layout, slot: null, left: start.left, top: start.top });
+  el.setPointerCapture(event.pointerId);
+
+  const size = layout.size * uiScale();
+  const zones = Object.entries(POSITIONS).flatMap(([key, position]) => {
+    const rect = document.getElementById(position.slot)?.getBoundingClientRect();
+    if (!rect) return [];
+    const zone = { key, ...position.zone(rect, size, uiScale()), el: document.createElement("div") };
+    zone.el.className = "arcane-core-zone";
+    Object.assign(zone.el.style, {
+      left: `${zone.left}px`,
+      top: `${zone.top}px`,
+      width: `${size}px`,
+      height: `${size}px`,
+    });
+    el.before(zone.el);
+    return [zone];
+  });
+
+  let snap = null;
+  const onMove = (e) => {
+    const left = e.clientX - offset.x;
+    const top = e.clientY - offset.y;
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+    snap = zones.find((z) => Math.hypot(z.left - left, z.top - top) < SNAP_DISTANCE) ?? null;
+    for (const z of zones) z.el.classList.toggle("active", z === snap);
+  };
+  onMove(event);
+  el.addEventListener("pointermove", onMove);
+  el.addEventListener(
+    "lostpointercapture",
+    () => {
+      el.removeEventListener("pointermove", onMove);
+      for (const z of zones) z.el.remove();
+      if (snap) Object.assign(layout, { slot: snap.key, left: undefined, top: undefined });
+      else
+        Object.assign(layout, {
+          slot: "free",
+          left: Math.round(parseFloat(el.style.left)),
+          top: Math.round(parseFloat(el.style.top)),
+        });
+      place(el, layout);
+      save(layout);
+    },
+    { once: true },
+  );
+}
+
+function resize(event, el, layout) {
+  const rect = el.getBoundingClientRect();
+  const [vertical, horizontal] = el.dataset.handle.split("-");
+  const anchor = {
+    x: horizontal === "right" ? rect.left : rect.right,
+    y: vertical === "bottom" ? rect.top : rect.bottom,
+  };
+  const scale = rect.width / layout.size;
+  el.setPointerCapture(event.pointerId);
+
+  const onMove = (e) => {
+    const reach = Math.max(Math.abs(e.clientX - anchor.x), Math.abs(e.clientY - anchor.y)) / scale;
+    layout.size = Math.round(Math.clamp(reach, MIN_SIZE, MAX_SIZE));
+    el.style.width = el.style.height = `${layout.size}px`;
+  };
+  el.addEventListener("pointermove", onMove);
+  el.addEventListener(
+    "lostpointercapture",
+    () => {
+      el.removeEventListener("pointermove", onMove);
+      save(layout);
+    },
+    { once: true },
+  );
+}
+
+const save = ({ slot, left, top, size }) => game.settings.set(MODULE, "layout", { slot, left, top, size });
+
 const refresh = foundry.utils.debounce(async () => {
   render();
   if (!game.user.isGM) return;
@@ -46,35 +179,11 @@ const refresh = foundry.utils.debounce(async () => {
   if (!result.ok) ui.notifications.error(`Arcane Core: ${result.message}`);
 }, 100);
 
-Hooks.once("init", () => {
-  const register = (key, data) =>
-    game.settings.register(MODULE, key, { scope: "world", config: true, onChange: refresh, ...data });
-
-  register("campaignId", {
-    name: "Campaign ID",
-    hint: "From your Arcane Core dashboard. You can also paste a graphics link here to fill in both fields.",
-    type: String,
-    default: "",
-  });
-  register("apiKey", { name: "API Key", hint: "From the campaign's API dialog.", type: String, default: "" });
-  register("baseUrl", {
-    name: "Arcane Core URL",
-    hint: "Change only if you self-host Arcane Core.",
-    type: String,
-    default: "https://app.arcanecore.gg",
-  });
-  register("corner", {
-    name: "Corner",
-    type: String,
-    choices: { "top-left": "Top left", "top-right": "Top right", "bottom-left": "Bottom left", "bottom-right": "Bottom right" },
-    default: "bottom-right",
-  });
-  register("size", { name: "Size (px)", type: Number, default: 200 });
-});
+Hooks.once("init", () => registerSettings({ refresh, render }));
 
 Hooks.once("ready", render);
 
-Hooks.on("renderSettingsConfig", (app, html) => {
+Hooks.on("renderSettingsConfig", (_app, html) => {
   if (!game.user.isGM) return;
   const input = (key) => html.querySelector(`[name="${MODULE}.${key}"]`);
   const campaignInput = input("campaignId");
@@ -96,7 +205,7 @@ Hooks.on("renderSettingsConfig", (app, html) => {
     status.dataset.state = "checking";
     status.textContent = "Checking…";
     const result = await validate(urlInput.value, campaignInput.value, keyInput.value);
-    if (current !== run) return; // a newer check started while this one was in flight
+    if (current !== run) return;
     status.dataset.state = result.ok ? "ok" : "error";
     status.textContent = `${result.ok ? "✓" : "✗"} ${result.message}`;
   };
