@@ -1,0 +1,13 @@
+{
+  "id": "arcane-core",
+  "title": "Arcane Core",
+  "description": "Shows the NPC currently speaking in Arcane Core as a portrait in a corner of the game board.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14"
+  },
+  "authors": [{ "name": "Lucas Teng" }],
+  "esmodules": ["scripts/arcane-core.js"],
+  "styles": ["styles/arcane-core.css"]
+}

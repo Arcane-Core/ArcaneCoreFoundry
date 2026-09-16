@@ -1,0 +1,14 @@
+#arcane-core-portrait {
+  position: fixed;
+  z-index: 10;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}
+#arcane-core-portrait.top-left { top: 16px; left: 16px; }
+#arcane-core-portrait.top-right { top: 16px; right: 16px; }
+#arcane-core-portrait.bottom-left { bottom: 16px; left: 16px; }
+#arcane-core-portrait.bottom-right { bottom: 16px; right: 16px; }
+
+.arcane-core-status[data-state="ok"] { color: var(--color-level-success, #3a3); }
+.arcane-core-status[data-state="error"] { color: var(--color-level-error, #c33); }
